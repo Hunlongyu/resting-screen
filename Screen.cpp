@@ -132,7 +132,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam,
                          LPARAM lParam) {
   switch (message) {
     case WM_MYTRAYMESSAGE:
-      if (lParam == WM_RBUTTONUP) {
+      if (lParam == WM_LBUTTONUP) {
         ShowWindow(hWnd, SW_SHOW);
       } else if (lParam == WM_RBUTTONUP) {
         POINT pt;
