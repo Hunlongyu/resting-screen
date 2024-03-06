@@ -128,11 +128,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="ini\ini.h" />
+    <ClInclude Include="ini\INIReader.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Screen.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ini\ini.c" />
+    <ClCompile Include="ini\INIReader.cpp" />
     <ClCompile Include="Screen.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -143,9 +147,13 @@
     <Image Include="small.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\Gitlab\plot\.clang-format" />
+    <None Include=".clang-format" />
     <None Include=".gitignore" />
+    <None Include="config.ini" />
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="License.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

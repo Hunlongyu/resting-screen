@@ -27,9 +27,21 @@
     <ClInclude Include="Screen.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ini\INIReader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ini\ini.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Screen.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ini\INIReader.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ini\ini.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,8 +59,12 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\Gitlab\plot\.clang-format" />
     <None Include="README.md" />
     <None Include=".gitignore" />
+    <None Include="config.ini" />
+    <None Include=".clang-format" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="License.txt" />
   </ItemGroup>
 </Project>
