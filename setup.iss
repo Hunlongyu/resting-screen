@@ -5,11 +5,12 @@
 #define MyAppVersion "v1.1.0"
 #define MyAppPublisher "Hunlongyu"
 #define MyAppURL "https://github.com/Hunlongyu"
+#define MyAppExeName "Screen.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{3C924FE9-958C-464F-9F5F-D945EFFD938C}
+AppId={{6B08971A-D8F3-4476-8485-037D8D32A613}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -18,20 +19,30 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
 LicenseFile=G:\Github\Screen\License.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputBaseFilename=Resting Screen Helper
+PrivilegesRequiredOverridesAllowed=commandline
+OutputBaseFilename=息屏助手 安装包
 SetupIconFile=G:\Github\Screen\Screen.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
 [Files]
+Source: "G:\Github\Screen\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "G:\Github\Screen\x64\Release\config.ini"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+[Icons]
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
