@@ -29,12 +29,14 @@ constexpr int winRound = 10; // 窗口的圆角尺寸
 bool isStart{true};          // 启动立即熄屏
 bool isWindow{false};        // 启动显示窗口
 bool isShortcut{true};       // 快捷键是否生效
+bool isLock{false};          // 息屏时，是否先锁屏
 
 // 此代码模块中包含的函数的前向声明:
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void CheckConfigFile(); // 检查配置文件是否存在, 并生效
+void RestingScreenFn(); // 息屏函数
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -58,7 +60,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     }
 
     if (isStart) {
-        PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
+        RestingScreenFn();
     }
 
     const HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SCREEN));
@@ -159,8 +161,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message) {
         case WM_HOTKEY: {
             if (wParam == HOTKEY_ID) {
-                PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
-                // MessageBox(hWnd, L"快捷键生效", L"Info", MB_OK);
+                RestingScreenFn();
             }
         }
         case WM_MYTRAYMESSAGE:
@@ -198,7 +199,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             break;
         case WM_NCLBUTTONUP: {
-            PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
+            RestingScreenFn();
         } break;
         case WM_PAINT: {
             PAINTSTRUCT ps;
@@ -240,4 +241,13 @@ void CheckConfigFile()
     isStart    = reader.GetBoolean("Application", "start", false);
     isWindow   = reader.GetBoolean("Application", "window", false);
     isShortcut = reader.GetBoolean("Application", "shortcut", false);
+    isLock     = reader.GetBoolean("Application", "lock", false);
+}
+
+void RestingScreenFn()
+{
+    if (isLock) {
+        LockWorkStation();
+    }
+    PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
 }

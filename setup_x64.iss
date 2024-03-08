@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "息屏助手"
-#define MyAppVersion "v1.1.0"
+#define MyAppVersion "v1.2.0"
 #define MyAppPublisher "Hunlongyu"
 #define MyAppURL "https://github.com/Hunlongyu"
 #define MyAppExeName "Screen.exe"
@@ -20,12 +20,12 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile=G:\Github\Screen\License.txt
+LicenseFile=.\License.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
-OutputBaseFilename=息屏助手 安装包
-SetupIconFile=G:\Github\Screen\Screen.ico
+OutputBaseFilename=息屏助手安装包 {#MyAppVersion}_x64
+SetupIconFile=.\Screen.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -38,8 +38,8 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "G:\Github\Screen\x64\Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "G:\Github\Screen\x64\Release\config.ini"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\Release\x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\Release\x64\config.ini"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

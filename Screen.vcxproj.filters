@@ -63,6 +63,11 @@
     <None Include=".gitignore" />
     <None Include="config.ini" />
     <None Include=".clang-format" />
+    <None Include="setup_x64.iss" />
+    <None Include="setup_x86.iss" />
+    <None Include="build.bat">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="License.txt" />
