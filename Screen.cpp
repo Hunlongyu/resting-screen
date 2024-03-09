@@ -6,13 +6,19 @@
 #include <cstdio>
 #include <string>
 #include <filesystem>
+#include <fstream>
 
 #include "framework.h"
 #include "ini/INIReader.h"
+#include <shlwapi.h>
+#include <sstream>
+
+#pragma comment(lib, "shlwapi.lib")
 
 #define MAX_LOADSTRING   100
 #define HOTKEY_ID        1010 // 全局快捷键 ID
 #define WM_MYTRAYMESSAGE (WM_USER + 1)
+#define IDM_AUTO_START   1000 // 开机自启
 #define IDM_SHOW_HIDE    1001 // 窗口显示隐藏
 #define IDM_SETTINGS     1002 // 打开设置文件
 #define IDM_EXIT         1003 // 软件退出
@@ -31,15 +37,20 @@ bool isStart{true};           // 启动立即熄屏
 bool isWindow{false};         // 启动显示窗口
 bool isShortcut{true};        // 快捷键是否生效
 bool isLock{false};           // 息屏时，是否先锁屏
+bool isAutoStart{true};       // 开机自启
 std::string configPath{""};   // 配置文件的路径
 
 // 此代码模块中包含的函数的前向声明:
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void CheckConfigFile();                             // 检查配置文件是否存在, 并生效
-void RestingScreenFn();                             // 息屏函数
-void OpenSettingsFile();                            // 打开配置文件
+
+void CheckConfigFile();           // 检查配置文件是否存在, 并生效
+void RestingScreenFn();           // 息屏函数
+void OpenSettingsFile();          // 打开配置文件
+void ToggleAutoStart(bool);       // 切换开机自启功能
+void ModifyConfigAutoStart(bool); // 修改开机自启配置项
+
 std::wstring stringToWString(const std::string& s); // 字符串转
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
@@ -106,6 +117,12 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
     hPopupMenu = CreatePopupMenu();
     // 添加菜单项
     AppendMenu(hPopupMenu, MF_STRING, IDM_SHOW_HIDE, TEXT("显示"));
+    if (isAutoStart) {
+        AppendMenu(hPopupMenu, MF_STRING | MF_CHECKED, IDM_AUTO_START, TEXT("开机自启"));
+    }
+    else {
+        AppendMenu(hPopupMenu, MF_STRING, IDM_AUTO_START, TEXT("开机自启"));
+    }
     AppendMenu(hPopupMenu, MF_STRING, IDM_SETTINGS, TEXT("设置"));
     AppendMenu(hPopupMenu, MF_STRING, IDM_EXIT, TEXT("退出"));
 
@@ -145,7 +162,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     AddTrayIcon(hInstance, hWnd, uCallbackMessage);
 
     HKEY hKey;
-    if (RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\Hunlongyu\\Resting"), 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\Hunlongyu\\Screen"), 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
         WINDOWPLACEMENT wp;
         DWORD size = sizeof(WINDOWPLACEMENT);
         if (RegQueryValueEx(hKey, TEXT("WindowPlacement"), NULL, NULL, (BYTE*)&wp, &size) == ERROR_SUCCESS) {
@@ -191,6 +208,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
+                case IDM_AUTO_START:
+                    if (isAutoStart) {
+                        ToggleAutoStart(false);
+                    }
+                    else {
+                        ToggleAutoStart(true);
+                    }
+                    break;
                 case IDM_SHOW_HIDE:
                     if (IsWindowVisible(hWnd)) {
                         ShowWindow(hWnd, SW_HIDE); // 隐藏窗口
@@ -258,11 +283,19 @@ void CheckConfigFile()
     if (reader.ParseError() < 0) {
         return;
     }
-    version    = reader.GetString("Application", "version", "v1.0.0");
-    isStart    = reader.GetBoolean("Application", "start", false);
-    isWindow   = reader.GetBoolean("Application", "window", false);
-    isShortcut = reader.GetBoolean("Application", "shortcut", false);
-    isLock     = reader.GetBoolean("Application", "lock", false);
+    version     = reader.GetString("Application", "version", "v1.0.0");
+    isStart     = reader.GetBoolean("Application", "start", false);
+    isWindow    = reader.GetBoolean("Application", "window", false);
+    isShortcut  = reader.GetBoolean("Application", "shortcut", false);
+    isLock      = reader.GetBoolean("Application", "lock", false);
+    isAutoStart = reader.GetBoolean("Application", "autostart", false);
+    if (isAutoStart) {
+        isStart = false;
+        ToggleAutoStart(true);
+    }
+    else {
+        ToggleAutoStart(false);
+    }
 }
 
 void RestingScreenFn()
@@ -278,6 +311,81 @@ void OpenSettingsFile()
     if (configPath != "") {
         const std::wstring wConfigPath = stringToWString(configPath);
         ShellExecute(nullptr, L"open", wConfigPath.c_str(), nullptr, nullptr, SW_SHOW);
+    }
+}
+
+void ToggleAutoStart(bool enable)
+{
+    HKEY hKey;
+    const LPCWSTR szPath = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+    // 获取程序的完整路径
+    WCHAR szPathToExe[MAX_PATH];
+    if (GetModuleFileNameW(NULL, szPathToExe, MAX_PATH) == 0) {
+        MessageBoxW(NULL, L"无法获取程序路径，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // 获取程序的名称
+    const LPCWSTR szValueName = PathFindFileNameW(szPathToExe);
+
+    // 打开注册表键
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, szPath, 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
+        if (enable) {
+            // 向注册表写入值以开启自动启动
+            if (RegSetValueExW(hKey, szValueName, 0, REG_SZ, (BYTE*)szPathToExe, wcslen(szPathToExe) * sizeof(wchar_t)) != ERROR_SUCCESS) {
+                MessageBoxW(NULL, L"无法设置开机自启动，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
+            }
+            else {
+                CheckMenuItem(hPopupMenu, IDM_AUTO_START, MF_BYCOMMAND | MF_CHECKED);
+                isAutoStart = true;
+                ModifyConfigAutoStart(isAutoStart);
+            }
+        }
+        else {
+            // 从注册表中删除值以取消自动启动
+            const LONG lRet = RegDeleteValueW(hKey, szValueName);
+            if (lRet != ERROR_SUCCESS && lRet != ERROR_FILE_NOT_FOUND) {
+                MessageBoxW(NULL, L"无法取消开机自启动，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
+            }
+            else {
+                CheckMenuItem(hPopupMenu, IDM_AUTO_START, MF_BYCOMMAND | MF_UNCHECKED);
+                isAutoStart = false;
+                ModifyConfigAutoStart(isAutoStart);
+            }
+        }
+
+        // 关闭注册表键
+        RegCloseKey(hKey);
+    }
+    else {
+        MessageBoxW(NULL, L"无法打开注册表键，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
+    }
+}
+
+void ModifyConfigAutoStart(bool flag)
+{
+    std::ifstream filein(configPath); // File to read from
+    std::stringstream ss;
+    ss << filein.rdbuf();       // read the file
+    std::string str = ss.str(); // str holds the content of the file
+    filein.close();
+
+    std::string needle = "autostart=";
+    std::size_t found  = str.find(needle);
+
+    if (found != std::string::npos) {
+        std::size_t start = found + needle.length();
+        std::size_t end   = str.find_first_of("\n", start);
+        std::string value = str.substr(start, (end != std::string::npos ? end : str.length()) - start);
+        str.replace(str.begin() + start, str.begin() + start + value.length(), flag ? "true" : "false");
+
+        std::ofstream fileout(configPath); // Temporary file
+        if (!fileout) {
+            return;
+        }
+        fileout << str;
+        fileout.close();
     }
 }
 
