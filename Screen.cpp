@@ -4,9 +4,8 @@
 #include "Screen.h"
 
 #include <cstdio>
-#include <fstream>
-#include <iostream>
 #include <string>
+#include <filesystem>
 
 #include "framework.h"
 #include "ini/INIReader.h"
@@ -15,7 +14,8 @@
 #define HOTKEY_ID        1010 // 全局快捷键 ID
 #define WM_MYTRAYMESSAGE (WM_USER + 1)
 #define IDM_SHOW_HIDE    1001 // 窗口显示隐藏
-#define IDM_EXIT         1002 // 软件退出
+#define IDM_SETTINGS     1002 // 打开设置文件
+#define IDM_EXIT         1003 // 软件退出
 
 // 全局变量:
 HINSTANCE hInst;                     // 当前实例
@@ -24,19 +24,23 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // 主窗口类名
 HMENU hPopupMenu;                    // 托盘右键弹出菜单
 NOTIFYICONDATA nid = {0};            // 托盘图标句柄
 
-constexpr int winSize  = 80; // 正方体窗口的尺寸
-constexpr int winRound = 10; // 窗口的圆角尺寸
-bool isStart{true};          // 启动立即熄屏
-bool isWindow{false};        // 启动显示窗口
-bool isShortcut{true};       // 快捷键是否生效
-bool isLock{false};          // 息屏时，是否先锁屏
+constexpr int winSize  = 80;  // 正方体窗口的尺寸
+constexpr int winRound = 10;  // 窗口的圆角尺寸
+std::string version{"1.0.0"}; // 软件版本号
+bool isStart{true};           // 启动立即熄屏
+bool isWindow{false};         // 启动显示窗口
+bool isShortcut{true};        // 快捷键是否生效
+bool isLock{false};           // 息屏时，是否先锁屏
+std::string configPath{""};   // 配置文件的路径
 
 // 此代码模块中包含的函数的前向声明:
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-void CheckConfigFile(); // 检查配置文件是否存在, 并生效
-void RestingScreenFn(); // 息屏函数
+void CheckConfigFile();                             // 检查配置文件是否存在, 并生效
+void RestingScreenFn();                             // 息屏函数
+void OpenSettingsFile();                            // 打开配置文件
+std::wstring stringToWString(const std::string& s); // 字符串转
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -102,14 +106,16 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
     hPopupMenu = CreatePopupMenu();
     // 添加菜单项
     AppendMenu(hPopupMenu, MF_STRING, IDM_SHOW_HIDE, TEXT("显示"));
+    AppendMenu(hPopupMenu, MF_STRING, IDM_SETTINGS, TEXT("设置"));
     AppendMenu(hPopupMenu, MF_STRING, IDM_EXIT, TEXT("退出"));
 
-    nid.cbSize = sizeof(NOTIFYICONDATA);
-    nid.hWnd   = hWnd;
-    nid.uID    = TRUE;
-    nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-    nid.hIcon  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SCREEN));
-    wcsncpy_s(nid.szTip, L"息屏助手\nV1.0.0", sizeof(nid.szTip) / sizeof(WCHAR));
+    nid.cbSize             = sizeof(NOTIFYICONDATA);
+    nid.hWnd               = hWnd;
+    nid.uID                = TRUE;
+    nid.uFlags             = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    nid.hIcon              = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SCREEN));
+    const std::wstring ver = L"息屏助手\n" + stringToWString(version);
+    wcsncpy_s(nid.szTip, ver.c_str(), sizeof(nid.szTip) / sizeof(WCHAR));
     nid.uCallbackMessage = uCallbackMessage;
     Shell_NotifyIcon(NIM_ADD, &nid);
 }
@@ -193,6 +199,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         ShowWindow(hWnd, SW_SHOW); // 显示窗口
                     }
                     break;
+                case IDM_SETTINGS: OpenSettingsFile(); break;
                 case IDM_EXIT:
                     DestroyWindow(hWnd); // 退出程序
                     break;
@@ -231,13 +238,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void CheckConfigFile()
 {
-    const std::string path = "config.ini";
+    std::string path = "config.ini";
+    char* appdata;
+    size_t len;
+    const errno_t err = _dupenv_s(&appdata, &len, "APPDATA");
+    if (err || appdata == nullptr) {
+        return;
+    }
+    else {
+        std::string appdataPath(appdata);
+        appdataPath += "\\screen\\config.ini";
+        if (std::filesystem::exists(appdataPath)) {
+            path = appdataPath;
+        }
+    }
+    configPath = path;
     const INIReader reader(path);
 
     if (reader.ParseError() < 0) {
         return;
     }
-
+    version    = reader.GetString("Application", "version", "v1.0.0");
     isStart    = reader.GetBoolean("Application", "start", false);
     isWindow   = reader.GetBoolean("Application", "window", false);
     isShortcut = reader.GetBoolean("Application", "shortcut", false);
@@ -250,4 +271,20 @@ void RestingScreenFn()
         LockWorkStation();
     }
     PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
+}
+
+void OpenSettingsFile()
+{
+    if (configPath != "") {
+        const std::wstring wConfigPath = stringToWString(configPath);
+        ShellExecute(nullptr, L"open", wConfigPath.c_str(), nullptr, nullptr, SW_SHOW);
+    }
+}
+
+std::wstring stringToWString(const std::string& s)
+{
+    const int size = MultiByteToWideChar(CP_UTF8, 0, &s[0], static_cast<int>(s.size()), NULL, 0);
+    std::wstring result(size, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &s[0], static_cast<int>(s.size()), &result[0], size);
+    return result;
 }

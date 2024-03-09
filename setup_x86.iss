@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "œ¢∆¡÷˙ ÷"
-#define MyAppVersion "v1.2.0"
+#define MyAppVersion ReadIni(SourcePath + "\\config.ini", "Application", "version", "")
 #define MyAppPublisher "Hunlongyu"
 #define MyAppURL "https://github.com/Hunlongyu"
 #define MyAppExeName "Screen.exe"
@@ -13,7 +13,7 @@
 AppId={{6B08971A-D8F3-4476-8485-037D8D32A613}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -38,8 +38,8 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: ".\Release\x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\Release\x64\config.ini"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\Release\Win32\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\config.ini"; DestDir: "{userappdata}\screen"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
