@@ -27,21 +27,12 @@
     <ClInclude Include="Screen.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="ini\INIReader.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="ini\ini.h">
+    <ClInclude Include="ini\inicpp.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Screen.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="ini\INIReader.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="ini\ini.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

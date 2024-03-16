@@ -37,6 +37,9 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
+[Run]
+Filename: "{app}\{#MyAppExeName}"; Description: "∆Ù∂Øœ¢∆¡÷˙ ÷"; Flags: nowait postinstall skipifsilent
+
 [Files]
 Source: ".\Release\Win32\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\config.ini"; DestDir: "{userappdata}\screen"; Flags: ignoreversion

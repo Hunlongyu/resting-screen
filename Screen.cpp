@@ -1,17 +1,13 @@
 ﻿// Screen.cpp : 定义应用程序的入口点。
-//
 
 #include "Screen.h"
 
 #include <cstdio>
 #include <string>
 #include <filesystem>
-#include <fstream>
-
 #include "framework.h"
-#include "ini/INIReader.h"
 #include <shlwapi.h>
-#include <sstream>
+#include "ini/inicpp.h"
 
 #pragma comment(lib, "shlwapi.lib")
 
@@ -19,8 +15,8 @@
 #define HOTKEY_ID        1010 // 全局快捷键 ID
 #define WM_MYTRAYMESSAGE (WM_USER + 1)
 #define IDM_AUTO_START   1000 // 开机自启
-#define IDM_SHOW_HIDE    1001 // 窗口显示隐藏
-#define IDM_SETTINGS     1002 // 打开设置文件
+#define IDM_LOCK         1001 // 息屏锁屏
+#define IDM_SHORTCUT     1002 // 快捷键
 #define IDM_EXIT         1003 // 软件退出
 
 // 全局变量:
@@ -30,15 +26,12 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // 主窗口类名
 HMENU hPopupMenu;                    // 托盘右键弹出菜单
 NOTIFYICONDATA nid = {0};            // 托盘图标句柄
 
-constexpr int winSize  = 80;  // 正方体窗口的尺寸
-constexpr int winRound = 10;  // 窗口的圆角尺寸
 std::string version{"1.0.0"}; // 软件版本号
-bool isStart{true};           // 启动立即熄屏
-bool isWindow{false};         // 启动显示窗口
 bool isShortcut{true};        // 快捷键是否生效
 bool isLock{false};           // 息屏时，是否先锁屏
 bool isAutoStart{true};       // 开机自启
 std::string configPath{""};   // 配置文件的路径
+ini::IniFile m_ini;           // INI 配置
 
 // 此代码模块中包含的函数的前向声明:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -47,9 +40,10 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 void CheckConfigFile();           // 检查配置文件是否存在, 并生效
 void RestingScreenFn();           // 息屏函数
-void OpenSettingsFile();          // 打开配置文件
 void ToggleAutoStart(bool);       // 切换开机自启功能
 void ModifyConfigAutoStart(bool); // 修改开机自启配置项
+void ModifyConfigLock(bool);      // 修改锁屏配置项
+void ModifyConfigShortcut(bool);  // 修改快捷键配置项
 
 std::wstring stringToWString(const std::string& s); // 字符串转
 
@@ -60,10 +54,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         return 1; // 退出程序
     }
 
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
-
-    CheckConfigFile(); // 首先尝试读取配置文件
+    CheckConfigFile(); // 读取配置文件
 
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_SCREEN, szWindowClass, MAX_LOADSTRING);
@@ -72,10 +63,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     // 执行应用程序初始化:
     if (!InitInstance(hInstance, nCmdShow)) {
         return FALSE;
-    }
-
-    if (isStart) {
-        RestingScreenFn();
     }
 
     const HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SCREEN));
@@ -96,18 +83,17 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
     wcex.cbSize        = sizeof(WNDCLASSEX);
-    wcex.style         = CS_HREDRAW | CS_VREDRAW;
+    wcex.style         = 0;
     wcex.lpfnWndProc   = WndProc;
     wcex.cbClsExtra    = 0;
     wcex.cbWndExtra    = 0;
     wcex.hInstance     = hInstance;
     wcex.hIcon         = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SCREEN));
-    wcex.hCursor       = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.hCursor       = NULL;
+    wcex.hbrBackground = NULL;
     wcex.lpszMenuName  = MAKEINTRESOURCEW(IDC_SCREEN);
     wcex.lpszClassName = szWindowClass;
     wcex.hIconSm       = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
     return RegisterClassExW(&wcex);
 }
 
@@ -115,15 +101,31 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
 {
     // 创建弹出菜单
     hPopupMenu = CreatePopupMenu();
-    // 添加菜单项
-    AppendMenu(hPopupMenu, MF_STRING, IDM_SHOW_HIDE, TEXT("显示"));
+
+    // 锁屏
+    if (isLock) {
+        AppendMenu(hPopupMenu, MF_STRING | MF_CHECKED, IDM_LOCK, TEXT("锁屏"));
+    }
+    else {
+        AppendMenu(hPopupMenu, MF_STRING, IDM_LOCK, TEXT("锁屏"));
+    }
+
+    // 快捷键
+    if (isShortcut) {
+        AppendMenu(hPopupMenu, MF_STRING | MF_CHECKED, IDM_SHORTCUT, TEXT("快捷键"));
+    }
+    else {
+        AppendMenu(hPopupMenu, MF_STRING, IDM_SHORTCUT, TEXT("快捷键"));
+    }
+
+    // 开机自启
     if (isAutoStart) {
         AppendMenu(hPopupMenu, MF_STRING | MF_CHECKED, IDM_AUTO_START, TEXT("开机自启"));
     }
     else {
         AppendMenu(hPopupMenu, MF_STRING, IDM_AUTO_START, TEXT("开机自启"));
     }
-    AppendMenu(hPopupMenu, MF_STRING, IDM_SETTINGS, TEXT("设置"));
+
     AppendMenu(hPopupMenu, MF_STRING, IDM_EXIT, TEXT("退出"));
 
     nid.cbSize             = sizeof(NOTIFYICONDATA);
@@ -131,7 +133,7 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
     nid.uID                = TRUE;
     nid.uFlags             = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.hIcon              = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SCREEN));
-    const std::wstring ver = L"息屏助手\n" + stringToWString(version);
+    const std::wstring ver = L"息屏助手" + stringToWString(version) + L"\n" + L"快捷键 ALT + L";
     wcsncpy_s(nid.szTip, ver.c_str(), sizeof(nid.szTip) / sizeof(WCHAR));
     nid.uCallbackMessage = uCallbackMessage;
     Shell_NotifyIcon(NIM_ADD, &nid);
@@ -140,17 +142,10 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst           = hInstance;
-    const HWND hWnd = CreateWindowExW(WS_EX_LAYERED, szWindowClass, szTitle, WS_POPUP, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+    const HWND hWnd = CreateWindowExW(WS_EX_LAYERED, szWindowClass, szTitle, WS_POPUP, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInst, nullptr);
     if (!hWnd) {
         return FALSE;
     }
-    SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, winSize, winSize, SWP_NOMOVE | SWP_NOACTIVATE);
-    SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 40, LWA_COLORKEY | LWA_ALPHA);
-
-    const HRGN hRgn = CreateRoundRectRgn(0, 0, winSize, winSize, winRound, winRound);
-    SetWindowRgn(hWnd, hRgn, TRUE);
-    DeleteObject(hRgn);
-
     if (isShortcut) {
         const auto flag = RegisterHotKey(hWnd, HOTKEY_ID, MOD_ALT, 0x4C);
         if (flag != 0) {
@@ -158,24 +153,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         }
     }
     UpdateWindow(hWnd);
+    ShowWindow(hWnd, SW_HIDE);
     constexpr UINT uCallbackMessage = WM_MYTRAYMESSAGE;
-    AddTrayIcon(hInstance, hWnd, uCallbackMessage);
+    AddTrayIcon(hInst, hWnd, uCallbackMessage);
 
-    HKEY hKey;
-    if (RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\Hunlongyu\\Screen"), 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
-        WINDOWPLACEMENT wp;
-        DWORD size = sizeof(WINDOWPLACEMENT);
-        if (RegQueryValueEx(hKey, TEXT("WindowPlacement"), NULL, NULL, (BYTE*)&wp, &size) == ERROR_SUCCESS) {
-            SetWindowPlacement(hWnd, &wp);
-            if (isWindow) {
-                ShowWindow(hWnd, SW_SHOW);
-            }
-            else {
-                ShowWindow(hWnd, SW_HIDE);
-            }
-        }
-        RegCloseKey(hKey);
-    }
     return TRUE;
 }
 
@@ -187,75 +168,73 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 RestingScreenFn();
             }
         }
-        case WM_MYTRAYMESSAGE:
-            if (lParam == WM_LBUTTONUP) {
-                ShowWindow(hWnd, SW_SHOW);
+        case WM_MYTRAYMESSAGE: {
+            if (lParam == WM_LBUTTONDBLCLK) {
+                MessageBoxW(NULL, L"双击", L"提示", MB_OK | MB_ICONERROR);
+                break;
             }
             else if (lParam == WM_RBUTTONUP) {
                 POINT pt;
                 GetCursorPos(&pt);
                 SetForegroundWindow(hWnd);
                 // 根据窗口的可见性修改菜单项的文本
-                if (IsWindowVisible(hWnd)) {
-                    ModifyMenu(hPopupMenu, IDM_SHOW_HIDE, MF_BYCOMMAND | MF_STRING, IDM_SHOW_HIDE, TEXT("隐藏"));
+                if (isLock) {
+                    ModifyMenu(hPopupMenu, IDM_LOCK, MF_STRING | MF_CHECKED, IDM_LOCK, TEXT("锁屏"));
                 }
                 else {
-                    ModifyMenu(hPopupMenu, IDM_SHOW_HIDE, MF_BYCOMMAND | MF_STRING, IDM_SHOW_HIDE, TEXT("显示"));
+                    ModifyMenu(hPopupMenu, IDM_LOCK, MF_STRING, IDM_LOCK, TEXT("锁屏"));
+                }
+
+                if (isShortcut) {
+                    ModifyMenu(hPopupMenu, IDM_SHORTCUT, MF_STRING | MF_CHECKED, IDM_SHORTCUT, TEXT("快捷键"));
+                }
+                else {
+                    ModifyMenu(hPopupMenu, IDM_SHORTCUT, MF_STRING, IDM_SHORTCUT, TEXT("快捷键"));
+                }
+
+                if (isAutoStart) {
+                    ModifyMenu(hPopupMenu, IDM_AUTO_START, MF_STRING | MF_CHECKED, IDM_AUTO_START, TEXT("开机自启"));
+                }
+                else {
+                    ModifyMenu(hPopupMenu, IDM_AUTO_START, MF_STRING, IDM_AUTO_START, TEXT("开机自启"));
                 }
                 TrackPopupMenu(hPopupMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL);
                 PostMessage(hWnd, WM_NULL, 0, 0);
             }
             break;
-        case WM_COMMAND:
+        }
+        case WM_COMMAND: {
             switch (LOWORD(wParam)) {
-                case IDM_AUTO_START:
-                    if (isAutoStart) {
-                        ToggleAutoStart(false);
-                    }
-                    else {
-                        ToggleAutoStart(true);
-                    }
+                case IDM_LOCK: {
+                    const auto flag = !isLock;
+                    ModifyConfigLock(flag);
                     break;
-                case IDM_SHOW_HIDE:
-                    if (IsWindowVisible(hWnd)) {
-                        ShowWindow(hWnd, SW_HIDE); // 隐藏窗口
-                    }
-                    else {
-                        ShowWindow(hWnd, SW_SHOW); // 显示窗口
-                    }
+                }
+                case IDM_AUTO_START: {
+                    const auto flag = !isAutoStart;
+                    ToggleAutoStart(flag);
                     break;
-                case IDM_SETTINGS: OpenSettingsFile(); break;
-                case IDM_EXIT:
+                }
+                case IDM_SHORTCUT: {
+                    const auto flag = !isShortcut;
+                    ModifyConfigShortcut(flag);
+                    break;
+                }
+                case IDM_EXIT: {
                     DestroyWindow(hWnd); // 退出程序
                     break;
+                }
+                default: {
+                    break;
+                }
             }
             break;
-        case WM_NCLBUTTONUP: {
-            RestingScreenFn();
-        } break;
-        case WM_PAINT: {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            EndPaint(hWnd, &ps);
-        } break;
-
-        case WM_NCHITTEST: return HTCAPTION;
-
-        case WM_DESTROY:
-            WINDOWPLACEMENT wp;
-            wp.length = sizeof(WINDOWPLACEMENT);
-            // 获取窗口布局信息
-            GetWindowPlacement(hWnd, &wp);
-
-            // 在Registry中保存布局信息
-            HKEY hKey;
-            if (RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("Software\\Hunlongyu\\Resting"), 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) {
-                RegSetValueEx(hKey, TEXT("WindowPlacement"), 0, REG_BINARY, (BYTE*)&wp, sizeof(WINDOWPLACEMENT));
-                RegCloseKey(hKey);
-            }
+        }
+        case WM_DESTROY: {
             Shell_NotifyIcon(NIM_DELETE, &nid);
             PostQuitMessage(0);
             break;
+        }
         default: return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
@@ -263,39 +242,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void CheckConfigFile()
 {
-    std::string path = "config.ini";
-    char* appdata;
-    size_t len;
-    const errno_t err = _dupenv_s(&appdata, &len, "APPDATA");
-    if (err || appdata == nullptr) {
-        return;
+    char* appdata = nullptr;
+    size_t len    = 0;
+    if (_dupenv_s(&appdata, &len, "APPDATA") == 0 && appdata != nullptr) {
+        std::filesystem::path appdata_path(appdata);
+        appdata_path /= "screen/config.ini";
+        configPath = exists(appdata_path) ? appdata_path.string() : "config.ini";
     }
-    else {
-        std::string appdataPath(appdata);
-        appdataPath += "\\screen\\config.ini";
-        if (std::filesystem::exists(appdataPath)) {
-            path = appdataPath;
-        }
-    }
-    configPath = path;
-    const INIReader reader(path);
+    free(appdata);
 
-    if (reader.ParseError() < 0) {
-        return;
-    }
-    version     = reader.GetString("Application", "version", "v1.0.0");
-    isStart     = reader.GetBoolean("Application", "start", false);
-    isWindow    = reader.GetBoolean("Application", "window", false);
-    isShortcut  = reader.GetBoolean("Application", "shortcut", false);
-    isLock      = reader.GetBoolean("Application", "lock", false);
-    isAutoStart = reader.GetBoolean("Application", "autostart", false);
-    if (isAutoStart) {
-        isStart = false;
-        ToggleAutoStart(true);
-    }
-    else {
-        ToggleAutoStart(false);
-    }
+    m_ini.setMultiLineValues(true);
+    m_ini.load(configPath);
+    version     = m_ini["Application"]["version"].as<std::string>();
+    isShortcut  = m_ini["Application"]["shortcut"].as<bool>();
+    isLock      = m_ini["Application"]["lock"].as<bool>();
+    isAutoStart = m_ini["Application"]["autostart"].as<bool>();
+
+    ToggleAutoStart(isAutoStart);
 }
 
 void RestingScreenFn()
@@ -304,14 +267,6 @@ void RestingScreenFn()
         LockWorkStation();
     }
     PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
-}
-
-void OpenSettingsFile()
-{
-    if (configPath != "") {
-        const std::wstring wConfigPath = stringToWString(configPath);
-        ShellExecute(nullptr, L"open", wConfigPath.c_str(), nullptr, nullptr, SW_SHOW);
-    }
 }
 
 void ToggleAutoStart(bool enable)
@@ -332,26 +287,21 @@ void ToggleAutoStart(bool enable)
     // 打开注册表键
     if (RegOpenKeyExW(HKEY_CURRENT_USER, szPath, 0, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS) {
         if (enable) {
+            ModifyConfigAutoStart(true);
             // 向注册表写入值以开启自动启动
             if (RegSetValueExW(hKey, szValueName, 0, REG_SZ, (BYTE*)szPathToExe, wcslen(szPathToExe) * sizeof(wchar_t)) != ERROR_SUCCESS) {
                 MessageBoxW(NULL, L"无法设置开机自启动，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
             }
             else {
                 CheckMenuItem(hPopupMenu, IDM_AUTO_START, MF_BYCOMMAND | MF_CHECKED);
-                isAutoStart = true;
-                ModifyConfigAutoStart(isAutoStart);
             }
         }
         else {
+            ModifyConfigAutoStart(false);
             // 从注册表中删除值以取消自动启动
             const LONG lRet = RegDeleteValueW(hKey, szValueName);
             if (lRet != ERROR_SUCCESS && lRet != ERROR_FILE_NOT_FOUND) {
                 MessageBoxW(NULL, L"无法取消开机自启动，开机自启功能异常", L"错误", MB_OK | MB_ICONERROR);
-            }
-            else {
-                CheckMenuItem(hPopupMenu, IDM_AUTO_START, MF_BYCOMMAND | MF_UNCHECKED);
-                isAutoStart = false;
-                ModifyConfigAutoStart(isAutoStart);
             }
         }
 
@@ -365,28 +315,23 @@ void ToggleAutoStart(bool enable)
 
 void ModifyConfigAutoStart(bool flag)
 {
-    std::ifstream filein(configPath); // File to read from
-    std::stringstream ss;
-    ss << filein.rdbuf();       // read the file
-    std::string str = ss.str(); // str holds the content of the file
-    filein.close();
+    isAutoStart                       = flag;
+    m_ini["Application"]["autostart"] = flag;
+    m_ini.save(configPath);
+}
 
-    std::string needle = "autostart=";
-    std::size_t found  = str.find(needle);
+void ModifyConfigLock(bool flag)
+{
+    isLock                       = flag;
+    m_ini["Application"]["lock"] = flag;
+    m_ini.save(configPath);
+}
 
-    if (found != std::string::npos) {
-        std::size_t start = found + needle.length();
-        std::size_t end   = str.find_first_of("\n", start);
-        std::string value = str.substr(start, (end != std::string::npos ? end : str.length()) - start);
-        str.replace(str.begin() + start, str.begin() + start + value.length(), flag ? "true" : "false");
-
-        std::ofstream fileout(configPath); // Temporary file
-        if (!fileout) {
-            return;
-        }
-        fileout << str;
-        fileout.close();
-    }
+void ModifyConfigShortcut(bool flag)
+{
+    isShortcut                       = flag;
+    m_ini["Application"]["shortcut"] = flag;
+    m_ini.save(configPath);
 }
 
 std::wstring stringToWString(const std::string& s)
