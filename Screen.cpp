@@ -133,7 +133,7 @@ void AddTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uCallbackMessage)
     nid.uID                = TRUE;
     nid.uFlags             = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.hIcon              = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SCREEN));
-    const std::wstring ver = L"息屏助手" + stringToWString(version) + L"\n" + L"快捷键 ALT + L";
+    const std::wstring ver = L"息屏助手 " + stringToWString(version) + L"\n" + L"快捷键 ALT + L";
     wcsncpy_s(nid.szTip, ver.c_str(), sizeof(nid.szTip) / sizeof(WCHAR));
     nid.uCallbackMessage = uCallbackMessage;
     Shell_NotifyIcon(NIM_ADD, &nid);
