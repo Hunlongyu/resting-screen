@@ -1,20 +1,36 @@
 ## 息屏助手
 
-启动后电脑立即息屏，没有窗口，常驻任务栏，双击托盘图标，出现半透明窗口，双击窗口立即息屏
+<p align="center">
+	<img src="https://forthebadge.com/images/badges/built-with-love.svg">
+<p>
 
-也可以使用全局快捷键 ALT + L
+<p align="center">
+<img alt="GitHub All Releases" src="https://img.shields.io/github/downloads/Hunlongyu/resting-screen/total?style=for-the-badge">
+<img alt="GitHub release (latest by date including pre-releases)" src="https://img.shields.io/github/v/release/Hunlongyu/resting-screen?include_prereleases&style=for-the-badge">
+<img alt="GitHub" src="https://img.shields.io/github/license/Hunlongyu/resting-screen?style=for-the-badge">
+<p>
 
-* 息屏：当你选择让Windows系统息屏时，系统将会关闭显示器的电源，以节省电力。这并不会对电脑正在运行的任务或进程产生任何影响。所有的任务和应用程序将会继续在后台运行。当你移动鼠标或按任何键，显示器就会立即恢复正常，你可以立即回到你离开的地方。息屏并不需要输入密码（除非你设置了需要在恢复后输入密码）。
-* 锁屏：当你选择锁屏时，Windows会显示登陆页面，需要输入密码才能回到你的账户。锁屏提供了更高的安全性，防止未经授权的用户访问你的电脑。虽然显示器可能仍在工作，但只会显示锁屏界面，而电脑正在运行的任务或程序也会在后台继续运行。这适合当你短暂离开电脑，但希望防止他人访问你电脑时使用。
+### ✨ 特性
+1. 全局快捷键 ALT + L
+2. 支持锁屏 + 息屏
+3. 支持开机自启
+4. 无界面，托盘图标
+5. 软件：78KB， 安装包：1.5MB，占内存：6.5MB
+
+
+### 👀 说明
+
+* 息屏：让显示器进入待机模式节省电力，不影响后台进程。唤醒时继续之前操作，无需密码（除非已设定）。
+* 锁屏：显示登录界面，需密码才能访问系统，确保无授权用户无法使用，适用于临时离开电脑。后台任务继续运行。
 
 总的来说，息屏主要用于节省电力，而锁屏主要用于提升账户安全。
 
-### 软件配置
+### ⚙️ 软件配置
 托盘图标的右键菜单项里修改
 
 ![](https://s2.loli.net/2024/03/16/RwbpE7cVAqxIvhW.png)
 
-### 更新日志
+### ⌚ 更新日志
 v1.4.0 20240316
 1. 移除界面
 2. 将配置项放置到右键菜单里
@@ -52,7 +68,7 @@ v1.0.0 20240228
 3. 窗口置顶
 4. 窗口拖拽
 
-### 唠唠叨叨
+### 😃 唠唠叨叨
 我是一个很注重午休的人，中午大厅关灯，屏幕锁屏后，却依旧亮着，还需要手动关闭显示器电源，午休结束还需要再次开启显示器电源，神烦。
 
 现在可以快速息屏，午休结束动一下鼠标就能点亮屏幕，进入电脑桌面，美滋滋~~
