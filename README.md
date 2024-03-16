@@ -11,6 +11,7 @@
 
 ### 软件配置
 托盘图标的右键菜单项里修改
+
 ![](https://s2.loli.net/2024/03/16/RwbpE7cVAqxIvhW.png)
 
 ### 更新日志
