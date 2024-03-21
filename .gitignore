@@ -1,4 +1,4 @@
+build
 .vs
-Release
-Debug
-Output
+out
+setup/Output

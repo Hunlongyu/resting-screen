@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "息屏助手"
-#define MyAppVersion ReadIni(SourcePath + "\\config.ini", "Application", "version", "")
+#define MyAppVersion ReadIni(SourcePath + "..\\config.ini", "Application", "version", "")
 #define MyAppPublisher "Hunlongyu"
 #define MyAppURL "https://github.com/Hunlongyu"
 #define MyAppExeName "Screen.exe"
@@ -26,7 +26,7 @@ LicenseFile=.\License.txt
 ;PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
 OutputBaseFilename=息屏助手安装包 {#MyAppVersion}_x64
-SetupIconFile=.\Screen.ico
+SetupIconFile=..\src\assets\logo.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -42,8 +42,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Filename: "{app}\{#MyAppExeName}"; Description: "启动息屏助手"; Flags: nowait postinstall skipifsilent
 
 [Files]
-Source: ".\Release\x64\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion;
-Source: ".\config.ini"; DestDir: "{userappdata}\screen"; Flags: ignoreversion
+Source: "..\out\build\x64-Release\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "..\config.ini"; DestDir: "{userappdata}\screen"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
